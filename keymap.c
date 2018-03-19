@@ -1,5 +1,6 @@
 #include "org60.h"
 #include "action_layer.h"
+#include <time.h>
 
 // Keyboard Layers
 enum keyboard_layers {
@@ -10,6 +11,8 @@ enum keyboard_layers {
   _MOUSE,    // Mouse Control Layer
   _LEFT,     // Left Hand Control Layer
 };
+
+static bool blFlag = true;
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -70,11 +73,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //            |        |        |        |        |        |        |        |        |        |        |        |        |             |
    //            |        |        |        |        |        |        |        |        |        |        |        |        |             |
-      KC_DEL,     KC_PAUS, KC_PSCR, KC_DEL,  KC_NO,   TO(0),   TO(1),   KC_NO,   KC_PAST, KC_7,    KC_8,    KC_9,    KC_PDOT, KC_INS,      
+      KC_INS,     KC_PSCR, KC_PAUS, KC_DEL,  KC_NO,   TO(0),   TO(1),   KC_NO,   KC_PAST, KC_7,    KC_8,    KC_9,    KC_PDOT, TO(0),      
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //               |        |        |        |        |        |        |        |        |        |        |        |                   |
    //               |        |        |        |        |        |        |        |        |        |        |        |                   |
-      KC_CAPS,       KC_HOME, KC_PGUP, KC_UNDO, KC_NO,   KC_NO,   KC_NO,   KC_PPLS, KC_PMNS, KC_4,    KC_5,    KC_6,    KC_NO, TO(0),      
+      KC_CAPS,       KC_HOME, KC_PGUP, KC_UNDO, KC_NO,   KC_NO,   KC_NO,   KC_PPLS, KC_PMNS, KC_4,    KC_5,    KC_6,    KC_NO, KC_ENT,      
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //                   |        |        |        |        |        |        |        |        |        |        |░░░░░░|        |░░░░░░░░|
    //                   |        |        |        |        |        |        |        |        |        |        |░░░░░░|        |░░░░░░░░|
@@ -94,11 +97,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //            |        |        |        |        |        |        |        |        |        |        |        |        |             |
    //            |        |        |        |        |        |        |        |        |        |        |        |        |             |
-      KC_SLCK,     KC_WH_L, KC_MS_U, KC_WH_R, KC_VOLU, KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_WH_U, KC_BTN4, KC_BTN5, KC_NO,       
+      KC_SLCK,     KC_WH_L, KC_MS_U, KC_WH_R, KC_VOLU, KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_WH_U, KC_BTN4, KC_BTN5, TO(0),      
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //               |        |        |        |        |        |        |        |        |        |        |        |                   |
    //               |        |        |        |        |        |        |        |        |        |        |        |                   |
-      KC_CAPS,       KC_MS_L, KC_MS_D, KC_MS_R, KC_VOLD, KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_BTN1, KC_BTN3, KC_BTN2, KC_NO, TO(0),      
+      KC_CAPS,       KC_MS_L, KC_MS_D, KC_MS_R, KC_VOLD, KC_NO,   KC_NO,   KC_NO,   KC_NO,   KC_BTN1, KC_BTN3, KC_BTN2, KC_NO, KC_ENT,     
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //                   |        |        |        |        |        |        |        |        |        |        |░░░░░░|        |░░░░░░░░|
    //                   |        |        |        |        |        |        |        |        |        |        |░░░░░░|        |░░░░░░░░|
@@ -134,6 +137,26 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
    //--------------------------------------------------------------------------------------------------------------------------------------'
 };
 
+#define INCBL if(get_backlight_level() == 0)backlight_level(5);else backlight_level(get_backlight_level() - 1);
+#define DECBL if(get_backlight_level() == 5)backlight_level(0);else backlight_level(get_backlight_level() + 1);
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+	if (keycode == BL_INC || keycode == BL_DEC)
+		return true;
+	if (keycode == BL_TOGG && record->event.pressed) {
+		blFlag = !blFlag;
+		return true;
+	}
+	if (blFlag && record->event.pressed && get_backlight_level() != 6) {
+		if (time(NULL) % 3 == 0) {
+			INCBL
+		}
+		else if (time(NULL) % 3 == 2) {
+			DECBL
+		}
+	}
+	return true;
+}
 
 // Custom Actions
 const uint16_t PROGMEM fn_actions[] = {
