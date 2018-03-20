@@ -12,7 +12,8 @@ enum keyboard_layers {
   _LEFT,     // Left Hand Control Layer
 };
 
-static bool blFlag = true;
+static short blFlag = 1;
+static short blStep = 1;
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -139,20 +140,28 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 #define INCBL if(get_backlight_level() == 0)backlight_level(5);else backlight_level(get_backlight_level() - 1);
 #define DECBL if(get_backlight_level() == 5)backlight_level(0);else backlight_level(get_backlight_level() + 1);
+#define STEPBL if(get_backlight_level() == 5)blStep=-1;else if(get_backlight_level() == 0)blStep=1;backlight_level(get_backlight_level() + blStep);
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	if (keycode == BL_INC || keycode == BL_DEC)
 		return true;
 	if (keycode == BL_TOGG && record->event.pressed) {
-		blFlag = !blFlag;
+		++blFlag;
+		if (blFlag == 3)
+			blFlag = 0;
 		return true;
 	}
-	if (blFlag && record->event.pressed && get_backlight_level() != 6) {
-		if (time(NULL) % 3 == 0) {
-			INCBL
+	if (blFlag != 0 && record->event.pressed && get_backlight_level() != 6) {
+		if (blFlag == 1) {
+			if (time(NULL) % 3 == 0) {
+				INCBL
+			}
+			else if (time(NULL) % 3 == 2) {
+				DECBL
+			}
 		}
-		else if (time(NULL) % 3 == 2) {
-			DECBL
+		if (blFlag == 2) {
+			STEPBL
 		}
 	}
 	return true;
