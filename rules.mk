@@ -5,7 +5,7 @@
 #
 CONSOLE_ENABLE = no         # Enable debugging console
 COMMAND_ENABLE = no         # Commands for debug and configuration
-TAP_DANCE_ENABLE = no 		# Tap Dance skills
+TAP_DANCE_ENABLE = yes 		# Tap Dance skills
 UNICODE_ENABLE = no         # Unicode
 MOUSEKEY_ENABLE = yes       # control over cursor movements and clicks via keycodes/custom functions
 EXTRAKEY_ENABLE = yes       # use the system and audio control key codes
