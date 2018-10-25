@@ -8,20 +8,48 @@ enum keyboard_layers {
 	//_DVORAK,   // Dvorak Base Layer
 	FUNC_,     // Function Layer
 	MOUSE_,    // Mouse Control Layer
-	LEFT_,     // Left Hand Control Layer
+	GAME_,     // Left Hand Control Layer
 };
 
 enum custom_tap_dance {
 	TD_NAME,
 	TD_PHONE,
+	TD_COMBO,
 };
 
-static uint8_t light_song[] = {
-	5, 1, 3, 4, 0, 2, 2, 3, 1, 5, 3
+enum light_mode {
+	LIGHT_HOLD,
+	LIGHT_AUTO,
+	LIGHT_ANYKEY,
+	LIGHT_CHEER,
+	
+	LIGHT_MAX
 };
 
-static uint8_t blFlag = 0;
-static int8_t blStep = 1;
+enum combo_state {
+	COMBO_NONE,
+	COMBO_SHORT_WAIT,
+	COMBO_LONG_WAIT,
+	COMBO_SHORT_EXEC,
+	COMBO_LONG_EXEC,
+};
+
+static uint8_t lightSong[] = {
+	5, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5
+};
+static uint8_t lightCheer[] = {
+	0, 5, 0, 5, 0, 5, 0, 5
+};
+
+
+static uint8_t lightMode = LIGHT_HOLD;
+static int8_t lightStep = 1;
+static uint16_t lightTimer = 0;
+
+static uint8_t comboState = COMBO_NONE;
+static uint16_t comboKeyCode = 0;
+static uint16_t comboInterval = 0;
+static uint16_t comboTimer = 0;
 
 void dance_name_finish(qk_tap_dance_state_t *state, void *user_data)
 {
@@ -36,7 +64,7 @@ void dance_name_finish(qk_tap_dance_state_t *state, void *user_data)
 		case 2:
 			SEND_STRING("surgenight@hotmail.com");
 			break;
-		case 3:
+		case 3:	
 			SEND_STRING("fuermosi007@qq.com");
 			break;
 	}
@@ -55,10 +83,20 @@ void dance_phone_finish(qk_tap_dance_state_t *state, void *user_data)
 	}
 }
 
+void dance_combo_finish(qk_tap_dance_state_t *state, void *user_data)
+{
+	comboInterval = state->count * 100;
+	if (state->pressed)
+		comboState = COMBO_LONG_WAIT;
+	else
+		comboState = COMBO_SHORT_WAIT;
+}
+
 qk_tap_dance_action_t tap_dance_actions[] = {
 	// ACTION_TAP_DANCE_FN_ADVANCED(each  finish  reset)
 	[TD_NAME] = ACTION_TAP_DANCE_FN(dance_name_finish),
 	[TD_PHONE] = ACTION_TAP_DANCE_FN(dance_phone_finish),
+	[TD_COMBO] = ACTION_TAP_DANCE_FN(dance_combo_finish),
 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -124,7 +162,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //               |        |        |        |        |        |        |        |        |        |        |        |                   |
    //               |        |        |        |        |        |        |        |        |        |        |        |                   |
-      KC_CAPS,       KC_HOME, KC_PGUP, KC_SLCK,   KC_NO,   KC_NO,   KC_NO,   KC_PPLS, KC_PMNS, KC_4,    KC_5,    KC_6,    KC_NO, KC_ENT,      
+      KC_CAPS,       KC_HOME, KC_PGUP, KC_SLCK,KC_LOCK,TD(TD_COMBO),KC_NO,KC_PPLS, KC_PMNS, KC_4,  KC_5,    KC_6,    KC_NO, KC_ENT,      
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //                   |        |        |        |        |        |        |        |        |        |        |░░░░░░|        |░░░░░░░░|
    //                   |        |        |        |        |        |        |        |        |        |        |░░░░░░|        |░░░░░░░░|
@@ -156,7 +194,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
    //--------------------------------------------------------------------------------------------------------------------------------------|
    //          |          |          |                                                        |          |        |░░░░░░|        |        |
    //          |          |          |                                                        |          |        |░░░░░░|        |        |
-      KC_LCTL,  KC_LGUI,   KC_LALT,   TO(LEFT_),                                               KC_MS_L,   KC_NO,  KC_NO,  KC_MS_D,  KC_MS_R),
+      KC_LCTL,  KC_LGUI,   KC_LALT,   TO(GAME_),                                               KC_MS_L,   KC_NO,  KC_NO,  KC_MS_D,  KC_MS_R),
    //--------------------------------------------------------------------------------------------------------------------------------------'
    
   LAYOUT(
@@ -186,22 +224,40 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 #define STEPBL if(get_backlight_level() % 5 == 0) \
-	blStep = -blStep;\
-backlight_level(get_backlight_level() + blStep);
+	lightStep = -lightStep;\
+backlight_level(get_backlight_level() + lightStep);
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	if (record->event.pressed) {
+		if (comboState == COMBO_SHORT_WAIT || comboState == COMBO_LONG_WAIT) {
+			comboKeyCode = keycode;
+			comboTimer = timer_read();
+			comboState += 2;
+			register_code(comboKeyCode);
+			if (comboState == COMBO_SHORT_EXEC)
+				unregister_code(comboKeyCode);
+		}
+		else if ((comboState == COMBO_SHORT_EXEC || comboState == COMBO_LONG_EXEC) && keycode == comboKeyCode) {
+			comboState = COMBO_NONE;
+			unregister_code(comboKeyCode);
+		}
 		if (keycode == BL_INC || keycode == BL_DEC)
 			return true;
-		else if (blFlag == 2 && get_backlight_level() != 6) {
-			STEPBL
+		else if (lightMode == LIGHT_ANYKEY) {
+			// STEPBL
+			backlight_level(keycode % 6);
+		}
+		else if (lightMode == LIGHT_CHEER) {
+			++lightStep;
 		}
 		switch (keycode) {
 			case BL_TOGG:
 				{
-					++blFlag;
-					if (blFlag == 3)
-						blFlag = 0;
+					++lightMode;
+					lightTimer = timer_read();
+					lightStep = 0;
+					if (lightMode == LIGHT_MAX)
+						lightMode = 0;
 					return false;
 				}
 				break;
@@ -210,17 +266,41 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 	return true;
 }
 
-
-static uint16_t light_timer = 0;
-
 // Loop
 void matrix_scan_user(void) {
-	if (blFlag == 1) {
-		int i = timer_elapsed(light_timer) / 100;
-		if (i >= sizeof(light_song) / sizeof(uint8_t)) {
-			light_timer = timer_read();
+	if (lightMode == LIGHT_AUTO) {
+		int i = timer_elapsed(lightTimer) / 100;
+		if (i >= sizeof(lightSong) / sizeof(uint8_t)) {
+			lightTimer = timer_read();
 			i = 0;
 		}
-		backlight_level(light_song[i]);
+		backlight_level(lightSong[i]);
+	}
+	else if (lightMode == LIGHT_CHEER) {
+		if (lightStep >= 100) {
+			lightTimer = timer_read();
+			lightStep = 0;
+			backlight_level(lightCheer[0]);
+		}
+		else {
+			int i = timer_elapsed(lightTimer) / 80;
+			if (i < sizeof(lightCheer) / sizeof(uint8_t)) {
+				backlight_level(lightCheer[i]);
+			}
+		}
+	}
+	if (comboState == COMBO_SHORT_EXEC) {
+		if (timer_elapsed(comboTimer) >= comboInterval) {
+			register_code(comboKeyCode);
+			unregister_code(comboKeyCode);
+			comboTimer = timer_read();
+		}
+	}
+	else if (comboState == COMBO_LONG_EXEC) {
+		if (timer_elapsed(comboTimer) >= comboInterval) {
+			unregister_code(comboKeyCode);
+			register_code(comboKeyCode);
+			comboTimer = timer_read();
+		}
 	}
 };
